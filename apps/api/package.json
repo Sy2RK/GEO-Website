@@ -1,0 +1,42 @@
+{
+  "name": "@guru/api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "scripts": {
+    "dev": "npm run build -w @guru/shared && dotenv -e ../../.env -- prisma generate && dotenv -e ../../.env -- tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:migrate": "dotenv -e ../../.env -- prisma generate && dotenv -e ../../.env -- prisma migrate deploy",
+    "db:generate": "dotenv -e ../../.env -- prisma generate",
+    "db:seed": "dotenv -e ../../.env -- prisma generate && dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "batch": "dotenv -e ../../.env -- tsx scripts/batch-upsert.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@fastify/jwt": "^9.0.1",
+    "@fastify/swagger": "^9.4.0",
+    "@fastify/swagger-ui": "^5.2.1",
+    "@guru/shared": "file:../../packages/shared",
+    "@prisma/client": "^6.2.1",
+    "fastify": "^5.2.1",
+    "js-yaml": "^4.1.0",
+    "next": "15.5.12",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.3",
+    "csv-parse": "^5.6.0",
+    "dotenv-cli": "^8.0.0",
+    "prisma": "^6.2.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
+  }
+}

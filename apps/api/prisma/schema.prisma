@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductStatus {
+  active
+  archived
+}
+
+enum DocState {
+  draft
+  published
+}
+
+enum Platform {
+  ios
+  android
+  web
+  pc
+  mac
+}
+
+enum UserRole {
+  viewer
+  editor
+  admin
+}
+
+enum MediaOwnerType {
+  product
+  collection
+  leaderboard
+  homepage
+}
+
+enum MediaType {
+  image
+  video
+  presskit
+  icon
+  cover
+}
+
+model Product {
+  id           String        @id @default(uuid())
+  canonicalId  String        @unique
+  slugByLocale Json
+  typeTaxonomy String[]
+  developer    String?
+  publisher    String?
+  brand        String?
+  platforms    Platform[]
+  storeLinks   Json?
+  status       ProductStatus @default(active)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  docs         ProductDoc[]
+
+  @@index([status])
+  @@index([typeTaxonomy], type: Gin)
+  @@index([platforms], type: Gin)
+}
+
+model ProductDoc {
+  id           String   @id @default(uuid())
+  productId    String
+  locale       String
+  state        DocState @default(draft)
+  revision     Int      @default(1)
+  content      Json
+  lockedFields Json     @default("{}")
+  publishedAt  DateTime?
+  createdBy    String?
+  updatedBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locale, state])
+  @@index([locale, state])
+}
+
+model CollectionDoc {
+  id           String   @id @default(uuid())
+  collectionId String
+  slugByLocale Json
+  locale       String
+  state        DocState @default(draft)
+  revision     Int      @default(1)
+  content      Json
+  publishedAt  DateTime?
+  createdBy    String?
+  updatedBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([collectionId, locale, state])
+  @@index([locale, state])
+}
+
+model LeaderboardDoc {
+  id          String   @id @default(uuid())
+  boardId     String
+  locale      String
+  state       DocState @default(draft)
+  mode        String   @default("manual")
+  autoRule    Json?
+  revision    Int      @default(1)
+  content     Json
+  publishedAt DateTime?
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([boardId, locale, state])
+  @@index([locale, state])
+}
+
+model HomepageConfig {
+  id          String   @id @default(uuid())
+  locale      String
+  state       DocState @default(draft)
+  revision    Int      @default(1)
+  content     Json
+  publishedAt DateTime?
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([locale, state])
+  @@index([locale, state])
+}
+
+model RedirectMap {
+  id        String   @id @default(uuid())
+  locale    String
+  fromPath  String
+  toPath    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, fromPath])
+  @@index([locale])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(viewer)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  locale     String?
+  diff       Json
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model MediaAsset {
+  id        String         @id @default(uuid())
+  ownerType MediaOwnerType
+  ownerId   String
+  locale    String?
+  type      MediaType
+  url       String
+  meta      Json
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([ownerType, ownerId])
+  @@index([locale])
+}

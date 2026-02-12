@@ -103,6 +103,7 @@ export default async function AdminCollectionPage({
         </section>
 
         <AdminCollectionEditor
+          key={`${collectionId}-${locale}`}
           collectionId={collectionId}
           locale={locale}
           uiLocale={uiLocale}

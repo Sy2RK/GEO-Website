@@ -60,9 +60,17 @@ export function AdminCollectionEditor({
   }
 
   async function publish() {
-    await clientApiPost(`/api/admin/collections/${encodeURIComponent(collectionId)}/${locale}/publish`, {});
-    setPublished(content);
-    setStatus(t(uiLocale, { zh: "已发布", en: "Published" }));
+    try {
+      await clientApiPost(`/api/admin/collections/${encodeURIComponent(collectionId)}/${locale}/draft`, {
+        slugByLocale,
+        content
+      });
+      await clientApiPost(`/api/admin/collections/${encodeURIComponent(collectionId)}/${locale}/publish`, {});
+      setPublished(content);
+      setStatus(t(uiLocale, { zh: "已保存并发布", en: "Saved and published" }));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t(uiLocale, { zh: "发布失败", en: "Publish failed" }));
+    }
   }
 
   return (
@@ -113,6 +121,7 @@ export function AdminCollectionEditor({
         initial={content}
         role={role}
         uiLocale={uiLocale}
+        onValueChange={setContent}
         onSubmit={saveDraft}
         submitLabel={t(uiLocale, { zh: "保存草稿", en: "Save Draft" })}
       />

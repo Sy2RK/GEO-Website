@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { clientApiPost } from "../lib/api-client";
 import { t, type UiLocale } from "../lib/ui-locale";
+import { localizeSkill } from "../lib/skills-i18n";
 
 type Skill = {
   id: string;
@@ -16,6 +17,7 @@ export function AdminSkillsRunner({ skills, uiLocale }: { skills: Skill[]; uiLoc
   const [output, setOutput] = useState<string>("");
   const [running, setRunning] = useState(false);
   const tt = (zh: string, en: string): string => t(uiLocale, { zh, en });
+  const localizedSkills = skills.map((skill) => localizeSkill(skill, uiLocale));
 
   async function runSkill(event: React.FormEvent) {
     event.preventDefault();
@@ -41,7 +43,7 @@ export function AdminSkillsRunner({ skills, uiLocale }: { skills: Skill[]; uiLoc
         <label>
           {tt("技能", "Skill")}
           <select value={skillId} onChange={(event) => setSkillId(event.target.value)}>
-            {skills.map((skill) => (
+            {localizedSkills.map((skill) => (
               <option key={skill.id} value={skill.id}>
                 {skill.name}
               </option>
@@ -61,7 +63,7 @@ export function AdminSkillsRunner({ skills, uiLocale }: { skills: Skill[]; uiLoc
 
       <h2 className="section-title">{tt("可用技能", "Available Skills")}</h2>
       <div className="list">
-        {skills.map((skill) => (
+        {localizedSkills.map((skill) => (
           <div key={skill.id} className="card">
             <strong>{skill.name}</strong>
             <p className="meta">{skill.id}</p>

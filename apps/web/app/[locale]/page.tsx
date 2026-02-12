@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FeaturedCarousel } from "../../components/FeaturedCarousel";
 import { JsonLdScript } from "../../components/JsonLdScript";
 import { SearchPanel } from "../../components/SearchPanel";
 import { apiGet } from "../../lib/api";
@@ -65,6 +64,7 @@ export default async function LocaleHomePage({
   const data = await apiGet<{
     locale: string;
     featured: Array<{
+      canonicalId?: string;
       badge?: string;
       reason?: string;
       card: {
@@ -120,13 +120,41 @@ export default async function LocaleHomePage({
         }>;
       };
     }>;
-    media: Array<{ id: string; type: string; url: string; meta?: { altText?: string } }>;
+    media: Array<{
+      id: string;
+      type: string;
+      url: string;
+      meta?: {
+        altText?: string;
+        canonicalId?: string;
+        slogan?: string;
+        sloganZh?: string;
+        sloganEn?: string;
+      };
+    }>;
     canEdit: boolean;
     editUrl: string | null;
   }>("/api/homepage", {
     params: {
       locale: apiLocale,
       ...(state ? { state } : {})
+    }
+  });
+
+  const productList = await apiGet<{
+    items: Array<{
+      canonicalId: string;
+      slug: string;
+      name: string;
+      summary: string;
+      coverUrl?: string | null;
+      coverAlt?: string | null;
+    }>;
+  }>("/api/products", {
+    params: {
+      locale: apiLocale,
+      page: 1,
+      pageSize: 200
     }
   });
 
@@ -142,6 +170,25 @@ export default async function LocaleHomePage({
         ? "Featured products, leaderboards, and collections with canonical GEO summaries"
         : "展示精选、榜单和专题，提供可运营的 GEO canonical 内容"
   };
+
+  const featuredByCanonicalId = new Map(
+    data.featured
+      .filter((item) => item.canonicalId && item.card?.slug)
+      .map((item) => [String(item.canonicalId), item.card])
+  );
+
+  const videoMedia = data.media.filter(
+    (asset) => asset.type === "video" || asset.url.toLowerCase().endsWith(".mp4")
+  );
+  const otherMedia = data.media.filter(
+    (asset) => !(asset.type === "video" || asset.url.toLowerCase().endsWith(".mp4"))
+  );
+  const gameLeaderboard =
+    data.leaderboards.find((entry) => entry.board.boardId === "games_top") ?? data.leaderboards[0] ?? null;
+  const toolLeaderboard =
+    data.leaderboards.find((entry) => entry.board.boardId === "ai_top") ??
+    data.leaderboards.find((entry) => entry.board.boardId !== gameLeaderboard?.board.boardId) ??
+    null;
 
   return (
     <main className="grid home-grid">
@@ -191,96 +238,123 @@ export default async function LocaleHomePage({
         </div>
       </section>
 
-      <section className="card section-surface">
-        <div className="hero-metrics" aria-label="Site metrics">
-          <div className="metric">
-            <span className="metric-value">80+</span>
-            <span className="meta">{locale === "en" ? "Guru Products Number" : "Guru旗下产品数"}</span>
+      {gameLeaderboard ? (
+        <section id="games-top" className="card section-surface">
+          <div className="section-headline-row">
+            <h2 className="section-title section-title-strong">
+              {locale === "en" ? "Top Games Picks" : "游戏精选榜"}
+            </h2>
+            <Link href={`/${locale}/leaderboards/${gameLeaderboard.board.boardId}`} className="button ghost">
+              {locale === "en" ? "View All" : "查看全部"}
+            </Link>
           </div>
-          <div className="metric">
-            <span className="metric-value">Game & AI Tools</span>
-            <span className="meta">{locale === "en" ? "Product lines" : "产品线"}</span>
-          </div>
-          <div className="metric">
-            <span className="metric-value">Test Context</span>
-            <span className="meta">{locale === "en" ? "Corporation Vision" : "企业愿景"}</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="featured" className="card section-surface">
-        <div className="section-headline-row">
-          <h2 className="section-title section-title-strong">{locale === "en" ? "Featured" : "精选内容"}</h2>
-          <span className="meta">{locale === "en" ? "Operationally curated" : "运营可配置"}</span>
-        </div>
-        <FeaturedCarousel localePath={locale} items={data.featured} />
-      </section>
-
-      <section id="leaderboards" className="two-col">
-        {data.leaderboards.map((entry) => (
-          <article key={`${entry.board.boardId}-${entry.placement}`} className="card section-surface">
-            <div className="section-headline-row">
-              <h2 className="section-title section-title-strong">{entry.board.doc.content.title}</h2>
-              <Link href={`/${locale}/leaderboards/${entry.board.boardId}`} className="button ghost">
-                {locale === "en" ? "View All" : "查看全部"}
+          <p className="meta leaderboard-desc">{gameLeaderboard.board.doc.content.description}</p>
+          <div className="list">
+            {gameLeaderboard.board.items.slice(0, gameLeaderboard.maxItems).map((item, index) => (
+              <Link href={`/${locale}/products/${item.slug}`} key={`${item.canonicalId}-${index}`} className="rank-row">
+                <div className="rank-index">#{item.rank ?? index + 1}</div>
+                <div>
+                  <strong>{item.name}</strong>
+                  <div className="meta">{item.summary}</div>
+                </div>
               </Link>
-            </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-            <p className="meta leaderboard-desc">{entry.board.doc.content.description}</p>
-
-            <div className="list">
-              {entry.board.items.slice(0, entry.maxItems).map((item, index) => (
-                <Link href={`/${locale}/products/${item.slug}`} key={`${item.canonicalId}-${index}`} className="rank-row">
-                  <div className="rank-index">#{item.rank ?? index + 1}</div>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <div className="meta">{item.summary}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section id="collections" className="card section-surface">
-        <div className="section-headline-row">
-          <h2 className="section-title section-title-strong">{locale === "en" ? "Collections" : "专题"}</h2>
-          <div className="quick-switch">
-            <Link href={`/${locale}/leaderboards/overall_top`} className="button ghost">
-              {locale === "en" ? "Overall" : "综合"}
-            </Link>
-            <Link href={`/${locale}/leaderboards/games_top`} className="button ghost">
-              Games
-            </Link>
-            <Link href={`/${locale}/leaderboards/ai_top`} className="button ghost">
-              AI
+      {toolLeaderboard ? (
+        <section id="tools-top" className="card section-surface">
+          <div className="section-headline-row">
+            <h2 className="section-title section-title-strong">
+              {locale === "en" ? "Top Tools Picks" : "工具精选榜"}
+            </h2>
+            <Link href={`/${locale}/leaderboards/${toolLeaderboard.board.boardId}`} className="button ghost">
+              {locale === "en" ? "View All" : "查看全部"}
             </Link>
           </div>
-        </div>
-
-        <div className="grid products">
-          {data.collections.map((entry) => (
-            <article key={entry.collection.collectionId} className="card collection-card">
-              <h3 className="collection-title">{entry.collection.doc.content.title}</h3>
-              <p>{entry.collection.doc.content.description}</p>
-              <p className="meta mono">{entry.collection.collectionId}</p>
-              <Link href={`/${locale}/collections/${entry.collection.slug}`} className="button primary">
-                {locale === "en" ? "Open Collection" : "查看专题"}
+          <p className="meta leaderboard-desc">{toolLeaderboard.board.doc.content.description}</p>
+          <div className="list">
+            {toolLeaderboard.board.items.slice(0, toolLeaderboard.maxItems).map((item, index) => (
+              <Link href={`/${locale}/products/${item.slug}`} key={`${item.canonicalId}-${index}`} className="rank-row">
+                <div className="rank-index">#{item.rank ?? index + 1}</div>
+                <div>
+                  <strong>{item.name}</strong>
+                  <div className="meta">{item.summary}</div>
+                </div>
               </Link>
-            </article>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section id="search">
         <SearchPanel locale={apiLocale} />
       </section>
 
+      <section id="products" className="card section-surface">
+        <div className="section-headline-row">
+          <h2 className="section-title section-title-strong">{locale === "en" ? "All Products" : "全部产品"}</h2>
+          <span className="meta">{locale === "en" ? `${productList.items.length} items` : `${productList.items.length} 个条目`}</span>
+        </div>
+        <div className="product-showcase-grid">
+          {productList.items.map((item) => (
+            <Link key={item.canonicalId} href={`/${locale}/products/${item.slug}`} className="product-showcase-card">
+              <div className="product-showcase-cover-wrap">
+                {item.coverUrl ? (
+                  <img
+                    src={item.coverUrl}
+                    alt={item.coverAlt ?? item.name}
+                    className="product-showcase-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="product-showcase-cover product-showcase-cover-fallback" aria-hidden="true" />
+                )}
+              </div>
+              <div className="product-showcase-body">
+                <h3 className="product-showcase-name">{item.name}</h3>
+                <p className="product-showcase-summary">{item.summary}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="card section-surface">
         <h2 className="section-title section-title-strong">{locale === "en" ? "Homepage Media" : "首页媒体"}</h2>
-        <div className="grid products">
-          {data.media.map((asset) => (
+        <div className="list">
+          {videoMedia.map((asset) => {
+            const relatedCard = asset.meta?.canonicalId
+              ? featuredByCanonicalId.get(asset.meta.canonicalId)
+              : data.featured[0]?.card;
+            const slogan =
+              (locale === "en" ? asset.meta?.sloganEn : asset.meta?.sloganZh) ??
+              asset.meta?.slogan ??
+              (locale === "en"
+                ? "Watch the gameplay highlight and jump into the featured title."
+                : "观看精彩玩法片段，立即进入对应推荐游戏。");
+
+            return (
+              <figure key={asset.id} className="card media-card media-card-video">
+                <video controls preload="metadata" playsInline className="homepage-video-player">
+                  <source src={asset.url} type="video/mp4" />
+                </video>
+                <figcaption className="media-video-caption">
+                  <p>{slogan}</p>
+                  {relatedCard ? (
+                    <Link href={`/${locale}/products/${relatedCard.slug}`} className="button primary">
+                      {relatedCard.name}
+                    </Link>
+                  ) : null}
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
+
+        <div className="grid products" style={{ marginTop: 12 }}>
+          {otherMedia.map((asset) => (
             <figure key={asset.id} className="card media-card">
               <a href={asset.url} target="_blank" rel="noreferrer">
                 {asset.url}

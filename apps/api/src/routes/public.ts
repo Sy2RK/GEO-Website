@@ -28,7 +28,7 @@ const listProductsQuerySchema = z.object({
   search: z.string().optional(),
   collectionId: z.string().optional(),
   page: z.coerce.number().min(1).default(1),
-  pageSize: z.coerce.number().min(1).max(50).default(12)
+  pageSize: z.coerce.number().min(1).max(200).default(12)
 });
 
 const localeSchema = z.object({
@@ -340,7 +340,16 @@ export const publicRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    const match = all.find((doc) => getLocaleValue(doc.slugByLocale, parsed.data.locale) === slug);
+    const normalize = (value: string): string => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    };
+    const targetSlug = normalize(slug).trim();
+
+    const match = all.find((doc) => normalize(getLocaleValue(doc.slugByLocale, parsed.data.locale)).trim() === targetSlug);
     if (!match) {
       return reply.code(404).send({ message: "collection_not_found" });
     }
@@ -529,10 +538,16 @@ export const publicRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(400).send({ message: "invalid_body", issues: body.error.issues });
     }
 
-    return runSkill({
-      skillId: body.data.skillId,
-      payload: body.data.input
-    });
+    try {
+      return await runSkill({
+        skillId: body.data.skillId,
+        payload: body.data.input
+      });
+    } catch (error) {
+      return reply.code(400).send({
+        message: error instanceof Error ? error.message : "skill_run_failed"
+      });
+    }
   });
 
   fastify.get("/api/ping", async () => ({

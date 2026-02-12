@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma";
 import {
   batchUpsert,
   createProduct,
+  deleteProduct,
   deleteMedia,
   patchProduct,
   publishCollectionDraft,
@@ -115,6 +116,24 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       return result;
     } catch (error) {
       return reply.code(400).send({ message: error instanceof Error ? error.message : "patch_failed" });
+    }
+  });
+
+  fastify.delete("/api/admin/products/:canonicalId", async (request, reply) => {
+    const user = await requireRole(request, reply, "editor");
+    if (!user) {
+      return;
+    }
+
+    const canonicalId = decodeURIComponent((request.params as { canonicalId: string }).canonicalId);
+
+    try {
+      return await deleteProduct({
+        canonicalId,
+        actorId: user.id
+      });
+    } catch (error) {
+      return reply.code(400).send({ message: error instanceof Error ? error.message : "delete_failed" });
     }
   });
 

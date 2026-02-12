@@ -7,11 +7,13 @@ import { resolveUiLocale, t } from "../../../lib/ui-locale";
 export default async function AdminProductsPage({
   searchParams
 }: {
-  searchParams: Promise<{ search?: string; type?: string; status?: string; ui?: string }>;
+  searchParams: Promise<{ search?: string; type?: string; status?: string; locale?: string; ui?: string }>;
 }) {
   const { token, user } = await requireEditorSession();
   const params = await searchParams;
   const uiLocale = resolveUiLocale(params.ui);
+  const contentLocale = params.locale === "en" ? "en" : "zh-CN";
+  const statusFilter = params.status === "archived" ? "archived" : params.status === "all" ? undefined : "active";
 
   const products = await apiGet<{
     total: number;
@@ -28,7 +30,7 @@ export default async function AdminProductsPage({
     params: {
       search: params.search,
       type: params.type,
-      status: params.status,
+      status: statusFilter,
       page: 1,
       pageSize: 50
     }
@@ -70,6 +72,7 @@ export default async function AdminProductsPage({
 
           <form style={{ display: "grid", gap: 10 }}>
             <input type="hidden" name="ui" value={uiLocale} />
+            <input type="hidden" name="locale" value={contentLocale} />
             <div className="two-col">
               <input
                 name="search"
@@ -86,14 +89,24 @@ export default async function AdminProductsPage({
               </select>
             </div>
             <div className="two-col">
-              <select name="status" defaultValue={params.status ?? ""}>
-                <option value="">{t(uiLocale, { zh: "全部状态", en: "All status" })}</option>
+              <select name="status" defaultValue={params.status ?? "active"}>
                 <option value="active">active</option>
                 <option value="archived">archived</option>
+                <option value="all">{t(uiLocale, { zh: "全部状态", en: "All status" })}</option>
               </select>
-              <button className="primary" type="submit">
-                {t(uiLocale, { zh: "搜索", en: "Search" })}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  name="locale"
+                  defaultValue={contentLocale}
+                  aria-label={t(uiLocale, { zh: "内容语言", en: "Content locale" })}
+                >
+                  <option value="zh-CN">zh-CN</option>
+                  <option value="en">en</option>
+                </select>
+                <button className="primary" type="submit">
+                  {t(uiLocale, { zh: "搜索", en: "Search" })}
+                </button>
+              </div>
             </div>
           </form>
 
@@ -110,7 +123,9 @@ export default async function AdminProductsPage({
               {products.items.map((item) => (
                 <tr key={item.canonicalId}>
                   <td>
-                    <Link href={`/admin/products/${encodeURIComponent(item.canonicalId)}?ui=${uiLocale}`}>
+                    <Link
+                      href={`/admin/products/${encodeURIComponent(item.canonicalId)}?locale=${encodeURIComponent(contentLocale)}&ui=${uiLocale}`}
+                    >
                       {item.canonicalId}
                     </Link>
                   </td>

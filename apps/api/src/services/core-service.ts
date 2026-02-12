@@ -35,9 +35,31 @@ export function getAlternatesForProduct(product: Product): Record<string, string
 
 export async function findProductBySlug(locale: string, slug: string): Promise<Product | null> {
   const candidates = await prisma.product.findMany({ where: { status: "active" } });
+  const normalize = (value: string): string => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
+  const targetSlug = normalize(slug).trim();
+
   return candidates.find((product) => {
+    const resolvedSlug = getLocaleValue(product.slugByLocale as Prisma.JsonValue, locale);
     const slugMap = product.slugByLocale as Record<string, string>;
-    return slugMap[locale] === slug;
+    const slugCandidates = new Set<string>([
+      resolvedSlug,
+      ...Object.values(slugMap)
+    ]);
+    for (const candidate of slugCandidates) {
+      if (!candidate) {
+        continue;
+      }
+      if (normalize(candidate).trim() === targetSlug) {
+        return true;
+      }
+    }
+    return false;
   }) ?? null;
 }
 
@@ -132,6 +154,21 @@ export async function expandProductCard(canonicalId: string, locale: string) {
 
   const content = doc.content as Record<string, unknown>;
   const slug = getLocaleValue(product.slugByLocale, locale);
+  const media = await prisma.mediaAsset.findMany({
+    where: {
+      ownerType: "product",
+      ownerId: canonicalId,
+      OR: [{ locale }, { locale: null }]
+    },
+    orderBy: [{ createdAt: "asc" }]
+  });
+  media.sort(
+    (a, b) =>
+      Number(((a.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0) -
+      Number(((b.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0)
+  );
+  const coverAsset = media.find((item) => item.type === "cover") ?? media.find((item) => item.type === "image");
+
   return {
     canonicalId,
     slug,
@@ -141,6 +178,8 @@ export async function expandProductCard(canonicalId: string, locale: string) {
     typeTaxonomy: product.typeTaxonomy,
     platforms: product.platforms,
     keywords: ((content.geo as { keywords?: string[] } | undefined)?.keywords ?? []).slice(0, 6),
+    coverUrl: coverAsset?.url ?? null,
+    coverAlt: ((coverAsset?.meta as Record<string, unknown> | undefined)?.altText as string | undefined) ?? null,
     url: `${config.webBaseUrl}${productPath(locale, slug)}`
   };
 }
@@ -195,7 +234,7 @@ export async function buildProductDetailResponse(params: {
       }
     ],
     canEdit: canEdit(role ?? null),
-    editUrl: canEdit(role ?? null) ? `/admin/products/${product.canonicalId}` : null,
+    editUrl: canEdit(role ?? null) ? `/admin/products/${product.canonicalId}?locale=${encodeURIComponent(locale)}` : null,
     media
   };
 }

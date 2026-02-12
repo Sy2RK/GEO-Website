@@ -21,8 +21,64 @@ export function AdminCreateProductForm({ uiLocale }: { uiLocale: UiLocale }) {
   const [brand, setBrand] = useState("Guru");
   const [platforms, setPlatforms] = useState<Platform[]>(["ios", "android", "web"]);
   const [submitting, setSubmitting] = useState(false);
+  const [jsonSubmitting, setJsonSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [jsonPayload, setJsonPayload] = useState(
+    JSON.stringify(
+      {
+        canonicalId: "guru:product:my-new-game",
+        slugByLocale: {
+          "zh-CN": "my-new-game",
+          en: "my-new-game"
+        },
+        typeTaxonomy: ["game", "casual", "puzzle"],
+        developer: "Guru Studio",
+        publisher: "Guru Studio",
+        brand: "Guru",
+        platforms: ["ios", "android", "web"],
+        storeLinks: {},
+        status: "active"
+      },
+      null,
+      2
+    )
+  );
   const tt = (zh: string, en: string): string => t(uiLocale, { zh, en });
+
+  function formatCreateError(message: string): string {
+    if (message.includes("slug_zh_conflict:")) {
+      const detail = message.split("slug_zh_conflict:")[1] ?? "";
+      const [slug, owner, status] = detail.split(":");
+      return tt(
+        `中文 slug「${slug || "-"}」已被产品 ${owner || "-"} 占用（状态: ${status || "unknown"}）。请更换 slug 或恢复原产品。`,
+        `zh-CN slug "${slug || "-"}" is already used by ${owner || "-"} (status: ${status || "unknown"}). Use another slug or restore that product.`
+      );
+    }
+
+    if (message.includes("slug_en_conflict:")) {
+      const detail = message.split("slug_en_conflict:")[1] ?? "";
+      const [slug, owner, status] = detail.split(":");
+      return tt(
+        `英文 slug「${slug || "-"}」已被产品 ${owner || "-"} 占用（状态: ${status || "unknown"}）。请更换 slug 或恢复原产品。`,
+        `en slug "${slug || "-"}" is already used by ${owner || "-"} (status: ${status || "unknown"}). Use another slug or restore that product.`
+      );
+    }
+
+    if (message.includes("canonical_id_conflict:")) {
+      const cid = message.split("canonical_id_conflict:")[1] ?? "";
+      return tt(
+        `canonicalId「${cid || "-"}」已存在，请更换。`,
+        `canonicalId "${cid || "-"}" already exists.`
+      );
+    }
+
+    if (message.includes("slug_required_both_locales")) {
+      return tt("请同时填写 zh-CN 与 en slug。", "Please provide both zh-CN and en slugs.");
+    }
+
+    return message;
+  }
 
   const normalizedTags = useMemo(
     () =>
@@ -74,9 +130,36 @@ export function AdminCreateProductForm({ uiLocale }: { uiLocale: UiLocale }) {
       router.push(`/admin/products/${encodeURIComponent(cid)}?locale=zh-CN&ui=${uiLocale}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create_failed");
+      setError(err instanceof Error ? formatCreateError(err.message) : "create_failed");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function submitJson(event: React.FormEvent) {
+    event.preventDefault();
+    setJsonSubmitting(true);
+    setJsonError(null);
+
+    try {
+      const parsed = JSON.parse(jsonPayload) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error(tt("JSON 顶层必须是对象", "JSON root must be an object"));
+      }
+
+      const payload = parsed as Record<string, unknown>;
+      const cid = String(payload.canonicalId ?? "").trim();
+      if (!cid) {
+        throw new Error(tt("JSON 中必须提供 canonicalId", "canonicalId is required in JSON"));
+      }
+
+      await clientApiPost("/api/admin/products", payload);
+      router.push(`/admin/products/${encodeURIComponent(cid)}?locale=zh-CN&ui=${uiLocale}`);
+      router.refresh();
+    } catch (err) {
+      setJsonError(err instanceof Error ? formatCreateError(err.message) : "json_create_failed");
+    } finally {
+      setJsonSubmitting(false);
     }
   }
 
@@ -164,6 +247,27 @@ export function AdminCreateProductForm({ uiLocale }: { uiLocale: UiLocale }) {
       </form>
 
       {error ? <p className="warning">{error}</p> : null}
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <h2 className="section-title">{tt("JSON 快速创建", "JSON Quick Create")}</h2>
+        <p className="meta">
+          {tt(
+            "可直接粘贴完整 Product JSON，一次性创建。适合批量模板复制后微调。",
+            "Paste full Product JSON to create in one step. Useful for template-based fast creation."
+          )}
+        </p>
+        <form onSubmit={submitJson} className="list">
+          <textarea
+            value={jsonPayload}
+            onChange={(event) => setJsonPayload(event.target.value)}
+            style={{ width: "100%", minHeight: 260, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+          />
+          <button className="primary" type="submit" disabled={jsonSubmitting}>
+            {jsonSubmitting ? tt("创建中...", "Creating...") : tt("使用 JSON 创建", "Create from JSON")}
+          </button>
+        </form>
+        {jsonError ? <p className="warning">{jsonError}</p> : null}
+      </section>
     </section>
   );
 }

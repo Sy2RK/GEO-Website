@@ -58,6 +58,11 @@ export const openApiDocument = {
         summary: "Patch product"
       }
     },
+    "/api/admin/products/{canonicalId}": {
+      delete: {
+        summary: "Delete product (soft-delete to archived)"
+      }
+    },
     "/api/admin/products/{canonicalId}/docs/{locale}/draft": {
       post: {
         summary: "Upsert product draft"

@@ -65,6 +65,7 @@ export function SchemaForm({
   initial,
   role,
   onSubmit,
+  onValueChange,
   submitLabel,
   uiLocale
 }: {
@@ -72,6 +73,7 @@ export function SchemaForm({
   initial: Record<string, unknown>;
   role: "viewer" | "editor" | "admin";
   onSubmit: (content: Record<string, unknown>) => Promise<void>;
+  onValueChange?: (content: Record<string, unknown>) => void;
   submitLabel: string;
   uiLocale: UiLocale;
 }) {
@@ -81,6 +83,11 @@ export function SchemaForm({
   const [success, setSuccess] = useState<string | null>(null);
 
   const schemaTitle = useMemo(() => schema.titleI18n ? t(uiLocale, schema.titleI18n) : schema.title, [schema, uiLocale]);
+
+  function applyValue(next: Record<string, unknown>) {
+    setValue(next);
+    onValueChange?.(next);
+  }
 
   async function submit() {
     setSaving(true);
@@ -125,7 +132,7 @@ export function SchemaForm({
                       <input
                         value={String(current ?? "")}
                         readOnly={readonly}
-                        onChange={(event) => setValue(setByPath(value, field.key, event.target.value))}
+                        onChange={(event) => applyValue(setByPath(value, field.key, event.target.value))}
                       />
                     </label>
                   );
@@ -143,7 +150,7 @@ export function SchemaForm({
                         value={Number(current ?? 0)}
                         readOnly={readonly}
                         onChange={(event) =>
-                          setValue(setByPath(value, field.key, Number.parseFloat(event.target.value || "0")))
+                          applyValue(setByPath(value, field.key, Number.parseFloat(event.target.value || "0")))
                         }
                       />
                     </label>
@@ -161,7 +168,7 @@ export function SchemaForm({
                         value={Array.isArray(current) ? current.join("\n") : ""}
                         readOnly={readonly}
                         onChange={(event) =>
-                          setValue(
+                          applyValue(
                             setByPath(
                               value,
                               field.key,
@@ -190,7 +197,7 @@ export function SchemaForm({
                         onChange={(event) => {
                           try {
                             const parsed = JSON.parse(event.target.value || "{}");
-                            setValue(setByPath(value, field.key, parsed));
+                            applyValue(setByPath(value, field.key, parsed));
                           } catch {
                             // Ignore parse error until valid JSON entered.
                           }
@@ -209,7 +216,7 @@ export function SchemaForm({
                     <textarea
                       value={String(current ?? "")}
                       readOnly={readonly}
-                      onChange={(event) => setValue(setByPath(value, field.key, event.target.value))}
+                      onChange={(event) => applyValue(setByPath(value, field.key, event.target.value))}
                     />
                   </label>
                 );

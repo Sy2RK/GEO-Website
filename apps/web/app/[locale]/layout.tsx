@@ -26,10 +26,10 @@ export default async function LocaleLayout({
         </div>
 
         <nav className="site-nav" aria-label="Primary">
-          <a href={`/${locale}#featured`}>{locale === "en" ? "Featured" : "精选"}</a>
-          <a href={`/${locale}#leaderboards`}>{locale === "en" ? "Leaderboards" : "榜单"}</a>
-          <a href={`/${locale}#collections`}>{locale === "en" ? "Collections" : "专题"}</a>
+          <a href={`/${locale}#games-top`}>{locale === "en" ? "Top Games" : "游戏榜"}</a>
+          <a href={`/${locale}#tools-top`}>{locale === "en" ? "Top Tools" : "工具榜"}</a>
           <a href={`/${locale}#search`}>{locale === "en" ? "Search" : "搜索"}</a>
+          <a href={`/${locale}#products`}>{locale === "en" ? "All Products" : "全部产品"}</a>
         </nav>
 
         <div className="site-actions">

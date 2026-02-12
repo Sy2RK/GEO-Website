@@ -51,7 +51,14 @@ export async function clientApiPost<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`client_api_post_failed:${response.status}`);
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { message?: string };
+      detail = payload.message ? `:${payload.message}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`client_api_post_failed:${response.status}${detail}`);
   }
 
   return (await response.json()) as T;
@@ -68,7 +75,14 @@ export async function clientApiGet<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`client_api_get_failed:${response.status}`);
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { message?: string };
+      detail = payload.message ? `:${payload.message}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`client_api_get_failed:${response.status}${detail}`);
   }
 
   return (await response.json()) as T;
@@ -82,6 +96,13 @@ export async function clientApiDelete(path: string, options?: { token?: string }
   });
 
   if (!response.ok) {
-    throw new Error(`client_api_delete_failed:${response.status}`);
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { message?: string };
+      detail = payload.message ? `:${payload.message}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`client_api_delete_failed:${response.status}${detail}`);
   }
 }

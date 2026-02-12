@@ -118,6 +118,7 @@ export default async function AdminHomepagePage({
         </section>
 
         <AdminHomepageEditor
+          key={`homepage-${locale}`}
           uiLocale={uiLocale}
           locale={locale}
           initial={initial}

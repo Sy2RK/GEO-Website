@@ -18,6 +18,137 @@ type AuditInput = {
   after: unknown;
 };
 
+type SlugOwner = {
+  id: string;
+  canonicalId: string;
+  status: "active" | "archived";
+};
+
+function toPrismaJson(value: unknown): Prisma.InputJsonValue | Prisma.JsonNullValueInput {
+  if (value === null || value === undefined) {
+    return Prisma.JsonNull;
+  }
+  return value as Prisma.InputJsonValue;
+}
+
+function normalizeSlugValue(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function normalizeSlugByLocale(value: unknown): Record<string, string> {
+  const input = (value ?? {}) as Record<string, unknown>;
+  return {
+    "zh-CN": normalizeSlugValue(input["zh-CN"]),
+    en: normalizeSlugValue(input.en)
+  };
+}
+
+async function findSlugOwner(locale: "zh-CN" | "en", slug: string): Promise<SlugOwner | null> {
+  if (!slug) {
+    return null;
+  }
+
+  const product = await prisma.product.findFirst({
+    where: {
+      slugByLocale: {
+        path: [locale],
+        equals: slug
+      }
+    },
+    select: {
+      id: true,
+      canonicalId: true,
+      status: true
+    }
+  });
+
+  if (!product) {
+    return null;
+  }
+
+  return {
+    id: product.id,
+    canonicalId: product.canonicalId,
+    status: product.status
+  };
+}
+
+async function purgeArchivedProductByCanonicalId(input: {
+  canonicalId: string;
+  actorId?: string;
+}): Promise<void> {
+  const product = await prisma.product.findUnique({ where: { canonicalId: input.canonicalId } });
+  if (!product || product.status !== "archived") {
+    return;
+  }
+
+  const media = await prisma.mediaAsset.findMany({
+    where: {
+      ownerType: "product",
+      ownerId: input.canonicalId
+    },
+    select: { id: true }
+  });
+
+  await prisma.$transaction([
+    prisma.mediaAsset.deleteMany({
+      where: {
+        ownerType: "product",
+        ownerId: input.canonicalId
+      }
+    }),
+    prisma.product.delete({
+      where: {
+        canonicalId: input.canonicalId
+      }
+    })
+  ]);
+
+  await writeAuditLog({
+    actorId: input.actorId,
+    action: "product.archived.purge",
+    entityType: "product",
+    entityId: input.canonicalId,
+    before: {
+      product,
+      mediaCount: media.length
+    },
+    after: null
+  });
+}
+
+async function ensureSlugAvailability(input: {
+  canonicalId?: string;
+  slugByLocale: Record<string, string>;
+  actorId?: string;
+}): Promise<void> {
+  const slugZh = normalizeSlugValue(input.slugByLocale["zh-CN"]);
+  const slugEn = normalizeSlugValue(input.slugByLocale.en);
+
+  const [ownerZh, ownerEn] = await Promise.all([findSlugOwner("zh-CN", slugZh), findSlugOwner("en", slugEn)]);
+
+  if (ownerZh && ownerZh.canonicalId !== input.canonicalId && ownerZh.status !== "archived") {
+    throw new Error(`slug_zh_conflict:${slugZh}:${ownerZh.canonicalId}:${ownerZh.status}`);
+  }
+
+  if (ownerEn && ownerEn.canonicalId !== input.canonicalId && ownerEn.status !== "archived") {
+    throw new Error(`slug_en_conflict:${slugEn}:${ownerEn.canonicalId}:${ownerEn.status}`);
+  }
+
+  const archivedConflicts = [ownerZh, ownerEn]
+    .filter((owner): owner is SlugOwner => !!owner)
+    .filter((owner) => owner.canonicalId !== input.canonicalId && owner.status === "archived")
+    .map((owner) => owner.canonicalId);
+
+  const uniqueArchivedConflicts = [...new Set(archivedConflicts)];
+  for (const canonicalId of uniqueArchivedConflicts) {
+    await purgeArchivedProductByCanonicalId({
+      canonicalId,
+      actorId: input.actorId
+    });
+  }
+}
+
 export async function writeAuditLog(input: AuditInput): Promise<void> {
   await prisma.auditLog.create({
     data: {
@@ -26,7 +157,7 @@ export async function writeAuditLog(input: AuditInput): Promise<void> {
       entityType: input.entityType,
       entityId: input.entityId,
       locale: input.locale ?? null,
-      diff: buildDiff(input.before, input.after)
+      diff: toPrismaJson(buildDiff(input.before, input.after))
     }
   });
 }
@@ -43,15 +174,29 @@ export async function patchProduct(input: {
 
   const before = product;
   const slugBefore = product.slugByLocale as Record<string, string>;
+  const mergedSlugByLocale = input.patch.slugByLocale
+    ? {
+        ...(product.slugByLocale as Record<string, string>),
+        ...normalizeSlugByLocale(input.patch.slugByLocale)
+      }
+    : (product.slugByLocale as Record<string, string>);
+
+  if (input.patch.slugByLocale) {
+    await ensureSlugAvailability({
+      canonicalId: input.canonicalId,
+      slugByLocale: mergedSlugByLocale,
+      actorId: input.actorId
+    });
+  }
 
   const data: Prisma.ProductUpdateInput = {
-    ...(input.patch.slugByLocale ? { slugByLocale: input.patch.slugByLocale as Prisma.JsonValue } : {}),
+    ...(input.patch.slugByLocale ? { slugByLocale: toPrismaJson(mergedSlugByLocale) } : {}),
     ...(input.patch.typeTaxonomy ? { typeTaxonomy: input.patch.typeTaxonomy as string[] } : {}),
     ...(input.patch.developer ? { developer: String(input.patch.developer) } : {}),
     ...(input.patch.publisher ? { publisher: String(input.patch.publisher) } : {}),
     ...(input.patch.brand ? { brand: String(input.patch.brand) } : {}),
     ...(input.patch.platforms ? { platforms: input.patch.platforms as Array<"ios" | "android" | "web" | "pc" | "mac"> } : {}),
-    ...(input.patch.storeLinks ? { storeLinks: input.patch.storeLinks as Prisma.JsonValue } : {}),
+    ...(input.patch.storeLinks ? { storeLinks: toPrismaJson(input.patch.storeLinks) } : {}),
     ...(input.patch.status ? { status: input.patch.status as "active" | "archived" } : {})
   };
 
@@ -98,10 +243,30 @@ export async function createProduct(input: {
   payload: Record<string, unknown>;
   actorId?: string;
 }): Promise<unknown> {
+  const canonicalId = String(input.payload.canonicalId ?? "").trim();
+  if (!canonicalId) {
+    throw new Error("canonical_id_required");
+  }
+
+  const existingCanonical = await prisma.product.findUnique({ where: { canonicalId } });
+  if (existingCanonical) {
+    throw new Error(`canonical_id_conflict:${canonicalId}`);
+  }
+
+  const slugByLocale = normalizeSlugByLocale(input.payload.slugByLocale);
+  if (!slugByLocale["zh-CN"] || !slugByLocale.en) {
+    throw new Error("slug_required_both_locales");
+  }
+
+  await ensureSlugAvailability({
+    slugByLocale,
+    actorId: input.actorId
+  });
+
   const created = await prisma.product.create({
     data: {
-      canonicalId: String(input.payload.canonicalId),
-      slugByLocale: (input.payload.slugByLocale as Prisma.JsonValue) ?? { "zh-CN": "", en: "" },
+      canonicalId,
+      slugByLocale: toPrismaJson(slugByLocale),
       typeTaxonomy: (input.payload.typeTaxonomy as string[]) ?? [],
       developer: input.payload.developer ? String(input.payload.developer) : null,
       publisher: input.payload.publisher ? String(input.payload.publisher) : null,
@@ -109,7 +274,7 @@ export async function createProduct(input: {
       platforms: ((input.payload.platforms as string[]) ?? []) as Array<
         "ios" | "android" | "web" | "pc" | "mac"
       >,
-      storeLinks: (input.payload.storeLinks as Prisma.JsonValue) ?? {},
+      storeLinks: toPrismaJson(input.payload.storeLinks ?? {}),
       status: (input.payload.status as "active" | "archived") ?? "active"
     }
   });
@@ -124,6 +289,56 @@ export async function createProduct(input: {
   });
 
   return created;
+}
+
+export async function deleteProduct(input: {
+  canonicalId: string;
+  actorId?: string;
+}): Promise<{
+  canonicalId: string;
+  deleted: true;
+  mode: "soft";
+  status: "archived";
+  alreadyArchived: boolean;
+}> {
+  const product = await prisma.product.findUnique({ where: { canonicalId: input.canonicalId } });
+  if (!product) {
+    throw new Error("product_not_found");
+  }
+
+  if (product.status === "archived") {
+    return {
+      canonicalId: product.canonicalId,
+      deleted: true,
+      mode: "soft",
+      status: "archived",
+      alreadyArchived: true
+    };
+  }
+
+  const updated = await prisma.product.update({
+    where: { canonicalId: input.canonicalId },
+    data: {
+      status: "archived"
+    }
+  });
+
+  await writeAuditLog({
+    actorId: input.actorId,
+    action: "product.delete",
+    entityType: "product",
+    entityId: updated.canonicalId,
+    before: product,
+    after: updated
+  });
+
+  return {
+    canonicalId: updated.canonicalId,
+    deleted: true,
+    mode: "soft",
+    status: "archived",
+    alreadyArchived: false
+  };
 }
 
 export async function upsertProductDraft(input: {
@@ -185,11 +400,11 @@ export async function upsertProductDraft(input: {
       }
     },
     update: {
-      content: input.content,
+      content: toPrismaJson(input.content),
       updatedBy: input.actorId,
       revision: nextRevision,
       ...(input.lockedFields && input.role === "admin"
-        ? { lockedFields: input.lockedFields as Prisma.JsonValue }
+        ? { lockedFields: toPrismaJson(input.lockedFields) }
         : {})
     },
     create: {
@@ -197,8 +412,8 @@ export async function upsertProductDraft(input: {
       locale: input.locale,
       state: "draft",
       revision: 1,
-      content: input.content,
-      lockedFields: (input.lockedFields ?? currentLockedFields) as Prisma.JsonValue,
+      content: toPrismaJson(input.content),
+      lockedFields: toPrismaJson(input.lockedFields ?? currentLockedFields),
       createdBy: input.actorId,
       updatedBy: input.actorId
     }
@@ -261,8 +476,8 @@ export async function publishProductDraft(input: {
       }
     },
     update: {
-      content: draft.content,
-      lockedFields: draft.lockedFields,
+      content: toPrismaJson(draft.content),
+      lockedFields: toPrismaJson(draft.lockedFields),
       updatedBy: input.actorId,
       revision: nextPublishedRevision(published?.revision),
       publishedAt: new Date()
@@ -272,8 +487,8 @@ export async function publishProductDraft(input: {
       locale: input.locale,
       state: "published",
       revision: 1,
-      content: draft.content,
-      lockedFields: draft.lockedFields,
+      content: toPrismaJson(draft.content),
+      lockedFields: toPrismaJson(draft.lockedFields),
       publishedAt: new Date(),
       createdBy: input.actorId,
       updatedBy: input.actorId
@@ -315,7 +530,7 @@ export async function upsertHomepageDraft(input: {
       }
     },
     update: {
-      content: input.content,
+      content: toPrismaJson(input.content),
       updatedBy: input.actorId,
       revision: nextDraftRevision(before?.revision)
     },
@@ -323,7 +538,7 @@ export async function upsertHomepageDraft(input: {
       locale: input.locale,
       state: "draft",
       revision: 1,
-      content: input.content,
+      content: toPrismaJson(input.content),
       createdBy: input.actorId,
       updatedBy: input.actorId
     }
@@ -375,7 +590,7 @@ export async function publishHomepageDraft(input: {
       }
     },
     update: {
-      content: draft.content,
+      content: toPrismaJson(draft.content),
       revision: nextPublishedRevision(before?.revision),
       updatedBy: input.actorId,
       publishedAt: new Date()
@@ -383,7 +598,7 @@ export async function publishHomepageDraft(input: {
     create: {
       locale: input.locale,
       state: "published",
-      content: draft.content,
+      content: toPrismaJson(draft.content),
       revision: 1,
       createdBy: input.actorId,
       updatedBy: input.actorId,
@@ -430,7 +645,7 @@ export async function upsertLeaderboardDraft(input: {
       }
     },
     update: {
-      content: input.content,
+      content: toPrismaJson(input.content),
       mode: input.mode,
       updatedBy: input.actorId,
       revision: nextDraftRevision(before?.revision)
@@ -440,7 +655,7 @@ export async function upsertLeaderboardDraft(input: {
       locale: input.locale,
       state: "draft",
       mode: input.mode,
-      content: input.content,
+      content: toPrismaJson(input.content),
       revision: 1,
       createdBy: input.actorId,
       updatedBy: input.actorId
@@ -498,7 +713,7 @@ export async function publishLeaderboardDraft(input: {
       }
     },
     update: {
-      content: draft.content,
+      content: toPrismaJson(draft.content),
       mode: draft.mode,
       revision: nextPublishedRevision(before?.revision),
       updatedBy: input.actorId,
@@ -509,7 +724,7 @@ export async function publishLeaderboardDraft(input: {
       locale: input.locale,
       state: "published",
       mode: draft.mode,
-      content: draft.content,
+      content: toPrismaJson(draft.content),
       revision: 1,
       createdBy: input.actorId,
       updatedBy: input.actorId,
@@ -556,8 +771,8 @@ export async function upsertCollectionDraft(input: {
       }
     },
     update: {
-      slugByLocale: input.slugByLocale,
-      content: input.content,
+      slugByLocale: toPrismaJson(input.slugByLocale),
+      content: toPrismaJson(input.content),
       updatedBy: input.actorId,
       revision: nextDraftRevision(before?.revision)
     },
@@ -565,8 +780,8 @@ export async function upsertCollectionDraft(input: {
       collectionId: input.collectionId,
       locale: input.locale,
       state: "draft",
-      slugByLocale: input.slugByLocale,
-      content: input.content,
+      slugByLocale: toPrismaJson(input.slugByLocale),
+      content: toPrismaJson(input.content),
       revision: 1,
       createdBy: input.actorId,
       updatedBy: input.actorId
@@ -624,8 +839,8 @@ export async function publishCollectionDraft(input: {
       }
     },
     update: {
-      slugByLocale: draft.slugByLocale,
-      content: draft.content,
+      slugByLocale: toPrismaJson(draft.slugByLocale),
+      content: toPrismaJson(draft.content),
       revision: nextPublishedRevision(before?.revision),
       updatedBy: input.actorId,
       publishedAt: new Date()
@@ -634,8 +849,8 @@ export async function publishCollectionDraft(input: {
       collectionId: input.collectionId,
       locale: input.locale,
       state: "published",
-      slugByLocale: draft.slugByLocale,
-      content: draft.content,
+      slugByLocale: toPrismaJson(draft.slugByLocale),
+      content: toPrismaJson(draft.content),
       revision: 1,
       createdBy: input.actorId,
       updatedBy: input.actorId,
@@ -693,7 +908,7 @@ export async function upsertMedia(input: {
       locale: input.locale ?? null,
       type: input.type,
       url: input.url,
-      meta: input.meta ?? {}
+      meta: toPrismaJson(input.meta ?? {})
     }
   });
 
@@ -731,7 +946,7 @@ export async function updateMedia(input: {
       ...(input.patch.locale !== undefined ? { locale: input.patch.locale } : {}),
       ...(input.patch.type ? { type: input.patch.type } : {}),
       ...(input.patch.url ? { url: input.patch.url } : {}),
-      ...(input.patch.meta ? { meta: input.patch.meta } : {})
+      ...(input.patch.meta ? { meta: toPrismaJson(input.patch.meta) } : {})
     }
   });
 

@@ -98,6 +98,7 @@ export default async function AdminLeaderboardPage({
         </section>
 
         <AdminDocEditor
+          key={`${boardId}-${locale}`}
           title={`${boardId} (${locale})`}
           uiLocale={uiLocale}
           schema={schema}

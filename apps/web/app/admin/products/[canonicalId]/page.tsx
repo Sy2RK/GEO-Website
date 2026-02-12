@@ -109,6 +109,7 @@ export default async function AdminProductDetailPage({
         </section>
 
         <AdminProductEditor
+          key={`${canonicalId}-${locale}`}
           canonicalId={canonicalId}
           locale={locale}
           uiLocale={uiLocale}

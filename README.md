@@ -221,6 +221,10 @@ npm run batch -w @guru/api -- --file ./data/products.yaml --entityType productDo
 
 ### 1) 环境变量
 复制 `.env.example` 到 `.env` 并按需调整。
+如需在后台使用“跨语言自动生成”技能（qwen-plus），请额外配置：
+```bash
+DASHSCOPE_API_KEY=your_dashscope_key
+```
 
 ### 2) 安装依赖
 ```bash

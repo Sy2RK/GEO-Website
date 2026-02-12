@@ -714,6 +714,36 @@ async function main() {
           sortOrder: 1,
           provider: "seed"
         }
+      },
+      {
+        ownerType: "homepage",
+        ownerId: "zh-CN",
+        locale: "zh-CN",
+        type: "video",
+        url: "/videos/sciencegeek-ai-intro.mp4",
+        meta: {
+          canonicalId: "guru:product:goodstriplematch",
+          sloganZh: "和 Boxy 一起进入高能闯关世界，马上开始你的脑力挑战！",
+          sloganEn: "Jump into Boxy's world and start your next brainy challenge now!",
+          altText: "ScienceGeek AI intro demo video",
+          sortOrder: 10,
+          provider: "seed"
+        }
+      },
+      {
+        ownerType: "homepage",
+        ownerId: "en",
+        locale: "en",
+        type: "video",
+        url: "/videos/sciencegeek-ai-intro.mp4",
+        meta: {
+          canonicalId: "guru:product:goodstriplematch",
+          sloganZh: "和 Boxy 一起进入高能闯关世界，马上开始你的脑力挑战！",
+          sloganEn: "Jump into Boxy's world and start your next brainy challenge now!",
+          altText: "ScienceGeek AI intro demo video",
+          sortOrder: 10,
+          provider: "seed"
+        }
       }
     ],
     skipDuplicates: true

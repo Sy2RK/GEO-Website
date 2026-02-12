@@ -33,6 +33,7 @@ export function MediaManager({
   const [mediaUrl, setMediaUrl] = useState("");
   const [mediaType, setMediaType] = useState("image");
   const [mediaAlt, setMediaAlt] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [status, setStatus] = useState("");
 
   async function refreshMedia() {
@@ -64,6 +65,37 @@ export function MediaManager({
     setMediaAlt("");
     await refreshMedia();
     setStatus(t(uiLocale, { zh: "媒体已添加", en: "Media added" }));
+  }
+
+  async function uploadCoverFile(event: React.FormEvent) {
+    event.preventDefault();
+    if (!coverFile) {
+      setStatus(t(uiLocale, { zh: "请先选择封面文件", en: "Please select a cover file first" }));
+      return;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("file_read_failed"));
+      reader.readAsDataURL(coverFile);
+    });
+
+    await clientApiPost("/api/admin/media", {
+      ownerType,
+      ownerId,
+      locale,
+      type: "cover",
+      url: dataUrl,
+      meta: {
+        altText: mediaAlt || coverFile.name
+      }
+    });
+
+    setCoverFile(null);
+    setMediaAlt("");
+    await refreshMedia();
+    setStatus(t(uiLocale, { zh: "封面上传成功", en: "Cover uploaded" }));
   }
 
   async function saveMedia(item: MediaAsset) {
@@ -133,6 +165,20 @@ export function MediaManager({
         />
         <button type="submit" className="primary">
           {t(uiLocale, { zh: "添加媒体", en: "Add media" })}
+        </button>
+      </form>
+
+      <form onSubmit={uploadCoverFile} className="list" style={{ marginBottom: 12 }}>
+        <div className="two-col">
+          <input type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} />
+          <input
+            value={mediaAlt}
+            onChange={(event) => setMediaAlt(event.target.value)}
+            placeholder={t(uiLocale, { zh: "封面 alt 文本", en: "Cover alt text" })}
+          />
+        </div>
+        <button type="submit" className="button">
+          {t(uiLocale, { zh: "上传本地封面", en: "Upload Local Cover" })}
         </button>
       </form>
 

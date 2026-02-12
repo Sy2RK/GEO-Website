@@ -437,8 +437,106 @@ button.ghost {
   margin-bottom: 8px;
 }
 
+.product-showcase-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.product-showcase-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfdff;
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  min-height: 132px;
+  overflow: hidden;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.product-showcase-card:hover {
+  background: #f1f6fd;
+  border-color: #b8cef0;
+}
+
+.product-showcase-cover-wrap {
+  position: relative;
+  background: linear-gradient(135deg, #d7e7fa, #edf5ff);
+}
+
+.product-showcase-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-showcase-cover-fallback {
+  background:
+    linear-gradient(140deg, rgba(37, 99, 235, 0.2), rgba(14, 165, 233, 0.08)),
+    radial-gradient(400px 160px at 20% 0%, rgba(255, 255, 255, 0.5), transparent 60%);
+}
+
+.product-showcase-body {
+  padding: 12px 14px;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  align-content: space-between;
+}
+
+.product-showcase-name {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.product-showcase-summary {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .media-card a {
   overflow-wrap: anywhere;
+}
+
+.media-video {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #000;
+}
+
+.media-card-video {
+  padding: 14px;
+}
+
+.homepage-video-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  background: #000;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.media-video-caption {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.media-video-caption p {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .floating-admin-entry {
@@ -577,6 +675,11 @@ textarea {
 
   .hero-title {
     max-width: 100%;
+  }
+
+  .product-showcase-card {
+    grid-template-columns: 108px 1fr;
+    min-height: 108px;
   }
 
   .hero-metrics {

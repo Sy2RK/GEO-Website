@@ -60,9 +60,16 @@ export function AdminDocEditor({
   }
 
   async function publish() {
-    await clientApiPost(publishPath, {});
-    setPublished(draft);
-    setStatus(t(uiLocale, { zh: "已发布", en: "Published" }));
+    try {
+      await clientApiPost(savePath, {
+        content: draft
+      });
+      await clientApiPost(publishPath, {});
+      setPublished(draft);
+      setStatus(t(uiLocale, { zh: "已保存并发布", en: "Saved and published" }));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t(uiLocale, { zh: "发布失败", en: "Publish failed" }));
+    }
   }
 
   return (
@@ -87,6 +94,7 @@ export function AdminDocEditor({
         initial={draft}
         role={role}
         uiLocale={uiLocale}
+        onValueChange={setDraft}
         onSubmit={saveDraft}
         submitLabel={t(uiLocale, { zh: "保存草稿", en: "Save Draft" })}
       />

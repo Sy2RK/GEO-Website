@@ -75,8 +75,15 @@ export function AdminHomepageEditor({
   }
 
   async function publish() {
-    await clientApiPost(`/api/admin/homepage/${locale}/publish`, {});
-    setStatus(tt("已发布", "Published"));
+    try {
+      await clientApiPost(`/api/admin/homepage/${locale}/draft`, {
+        content
+      });
+      await clientApiPost(`/api/admin/homepage/${locale}/publish`, {});
+      setStatus(tt("已保存并发布", "Saved and published"));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : tt("发布失败", "Publish failed"));
+    }
   }
 
   async function refreshMedia() {

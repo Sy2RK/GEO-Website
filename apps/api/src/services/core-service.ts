@@ -2,6 +2,7 @@ import type {
   CollectionDoc,
   HomepageConfig,
   LeaderboardDoc,
+  MediaAsset,
   Prisma,
   Product,
   ProductDoc,
@@ -132,6 +133,32 @@ export function shouldUseDraft(params: {
   return params.requestedState === "draft" && canEdit(params.role ?? null);
 }
 
+function getMediaSortOrder(item: MediaAsset): number {
+  return Number(((item.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0);
+}
+
+function sortMediaForStableDisplay(items: MediaAsset[]): MediaAsset[] {
+  return items.slice().sort((a, b) => {
+    const orderDelta = getMediaSortOrder(a) - getMediaSortOrder(b);
+    if (orderDelta !== 0) {
+      return orderDelta;
+    }
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  });
+}
+
+function pickCoverAssetForLocale(items: MediaAsset[], locale: string): MediaAsset | null {
+  const sorted = sortMediaForStableDisplay(items);
+  const localeMatched = sorted.filter((item) => item.locale === locale);
+  const global = sorted.filter((item) => item.locale === null);
+  const otherLocale = sorted.filter((item) => item.locale !== locale && item.locale !== null);
+
+  const pickCoverOrImage = (list: MediaAsset[]): MediaAsset | null =>
+    list.find((item) => item.type === "cover") ?? list.find((item) => item.type === "image") ?? null;
+
+  return pickCoverOrImage(localeMatched) ?? pickCoverOrImage(global) ?? pickCoverOrImage(otherLocale);
+}
+
 export async function expandProductCard(canonicalId: string, locale: string) {
   const product = await prisma.product.findUnique({ where: { canonicalId } });
   if (!product) {
@@ -157,17 +184,10 @@ export async function expandProductCard(canonicalId: string, locale: string) {
   const media = await prisma.mediaAsset.findMany({
     where: {
       ownerType: "product",
-      ownerId: canonicalId,
-      OR: [{ locale }, { locale: null }]
-    },
-    orderBy: [{ createdAt: "asc" }]
+      ownerId: canonicalId
+    }
   });
-  media.sort(
-    (a, b) =>
-      Number(((a.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0) -
-      Number(((b.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0)
-  );
-  const coverAsset = media.find((item) => item.type === "cover") ?? media.find((item) => item.type === "image");
+  const coverAsset = pickCoverAssetForLocale(media, locale);
 
   return {
     canonicalId,
@@ -198,18 +218,18 @@ export async function buildProductDetailResponse(params: {
 
   const jsonld = buildProductJsonLd({ product, doc, canonicalUrl, locale });
 
-  const media = await prisma.mediaAsset.findMany({
+  const allMedia = await prisma.mediaAsset.findMany({
     where: {
       ownerType: "product",
-      ownerId: product.canonicalId,
-      OR: [{ locale }, { locale: null }]
-    },
-    orderBy: [{ createdAt: "asc" }]
+      ownerId: product.canonicalId
+    }
   });
-  media.sort(
-    (a, b) =>
-      Number(((a.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0) -
-      Number(((b.meta as Record<string, unknown> | undefined)?.sortOrder as number | undefined) ?? 0)
+  const localeMedia = allMedia.filter((item) => item.locale === locale || item.locale === null);
+  const fallbackCover = pickCoverAssetForLocale(allMedia, locale);
+  const media = sortMediaForStableDisplay(
+    fallbackCover && !localeMedia.some((item) => item.id === fallbackCover.id)
+      ? [fallbackCover, ...localeMedia]
+      : localeMedia
   );
 
   return {

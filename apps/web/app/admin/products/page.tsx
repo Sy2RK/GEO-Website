@@ -86,6 +86,7 @@ export default async function AdminProductsPage({
                 <option value="">{t(uiLocale, { zh: "全部类型", en: "All type" })}</option>
                 <option value="game">game</option>
                 <option value="ai">ai</option>
+                <option value="others">others</option>
               </select>
             </div>
             <div className="two-col">

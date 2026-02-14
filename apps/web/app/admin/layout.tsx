@@ -6,7 +6,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <header className="admin-header card">
         <Link href="/admin/products" className="brand brand-link">
           <img src="/images/GuruLogo.png" alt="Guru logo" className="brand-logo" />
-          <span>Guru GEO Admin</span>
+          <span>Guru Game Admin</span>
         </Link>
         <Link href="/zh" className="button">
           Public Site

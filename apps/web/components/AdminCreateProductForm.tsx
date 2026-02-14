@@ -14,7 +14,7 @@ export function AdminCreateProductForm({ uiLocale }: { uiLocale: UiLocale }) {
   const [canonicalId, setCanonicalId] = useState("guru:product:");
   const [slugZh, setSlugZh] = useState("");
   const [slugEn, setSlugEn] = useState("");
-  const [kind, setKind] = useState<"game" | "ai">("game");
+  const [kind, setKind] = useState<"game" | "ai" | "others">("game");
   const [tags, setTags] = useState("");
   const [developer, setDeveloper] = useState("Guru Studio");
   const [publisher, setPublisher] = useState("Guru Studio");
@@ -197,9 +197,10 @@ export function AdminCreateProductForm({ uiLocale }: { uiLocale: UiLocale }) {
         <div className="two-col">
           <label>
             {tt("产品类型", "Product Type")}
-            <select value={kind} onChange={(event) => setKind(event.target.value as "game" | "ai") }>
+            <select value={kind} onChange={(event) => setKind(event.target.value as "game" | "ai" | "others") }>
               <option value="game">game</option>
               <option value="ai">ai</option>
+              <option value="others">others</option>
             </select>
           </label>
           <label>

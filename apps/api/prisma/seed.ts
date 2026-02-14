@@ -94,7 +94,7 @@ async function main() {
       usageContexts: ["通勤途中短时游玩", "排队/等候时快速开一局", "工作学习间隙的思维切换", "睡前轻量解谜放松"]
     },
     editing: {
-      notes: "Seeded from PDF canonical wiki reference (zh-CN) with structured GEO enrichment.",
+      notes: "Seeded from PDF canonical product reference (zh-CN) with structured GEO enrichment.",
       suggestions: ["后续可补充关卡系统与道具名称的术语表（中英对照）"]
     }
   };
@@ -165,7 +165,7 @@ async function main() {
       ]
     },
     editing: {
-      notes: "Seeded from PDF canonical wiki reference (en) with GEO-oriented normalization.",
+      notes: "Seeded from PDF canonical product reference (en) with GEO-oriented normalization.",
       suggestions: ["Add future glossary entries for level archetypes and booster taxonomy."]
     }
   };
@@ -173,7 +173,7 @@ async function main() {
   const zhDraftProductDocContent = {
     ...zhPublishedProductDocContent,
     editing: {
-      notes: "Draft based on canonical wiki text with extra editorial guidance.",
+      notes: "Draft based on canonical product text with extra editorial guidance.",
       suggestions: [
         "补充“新手三步上手路径”说明（观察布局 -> 先清障碍 -> 预留货架空间）。",
         "可增加“常见失败原因”段落，帮助用户理解优先级错误对后续操作的影响。"
@@ -184,7 +184,7 @@ async function main() {
   const enDraftProductDocContent = {
     ...enPublishedProductDocContent,
     editing: {
-      notes: "Draft based on canonical wiki text with additional guidance for future iterations.",
+      notes: "Draft based on canonical product text with additional guidance for future iterations.",
       suggestions: [
         "Add a beginner 3-step loop (scan layout -> remove blockers -> preserve shelf capacity).",
         "Document common failure patterns to explain sequencing mistakes."

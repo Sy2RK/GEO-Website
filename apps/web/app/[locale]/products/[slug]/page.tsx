@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLdScript } from "../../../../components/JsonLdScript";
+import { MediaPreview } from "../../../../components/MediaPreview";
 import { apiGet, getApiBaseUrl, getServerToken } from "../../../../lib/api";
 import { toApiLocale } from "../../../../lib/locales";
 
@@ -138,16 +139,16 @@ export default async function ProductPage({
   const content = data.doc.content;
 
   return (
-    <article className="grid">
+    <article className="grid product-detail-page">
       <JsonLdScript jsonld={data.jsonld} />
 
-      <section className="card">
-        <div className="top-bar" style={{ marginBottom: 10 }}>
-          <div>
-            <p className="meta" style={{ margin: 0 }}>
+      <section className="card product-detail-card">
+        <div className="top-bar product-detail-top">
+          <div className="product-detail-headline">
+            <p className="meta product-detail-id">
               {data.product.canonicalId}
             </p>
-            <h1 style={{ margin: "8px 0 0" }}>{content.identity?.name ?? data.product.canonicalId}</h1>
+            <h1 className="product-detail-title">{content.identity?.name ?? data.product.canonicalId}</h1>
           </div>
           {data.canEdit && data.editUrl ? (
             <Link href={data.editUrl} className="button">
@@ -156,38 +157,46 @@ export default async function ProductPage({
           ) : null}
         </div>
 
-        <p>{content.canonicalSummary}</p>
-        <p className="meta">{content.definition}</p>
+        <div className="product-detail-intro">
+          <p className="product-detail-summary">{content.canonicalSummary}</p>
+          <p className="meta product-detail-definition">{content.definition}</p>
+        </div>
 
-        <div className="two-col">
-          <div className="card">
+        <div className="two-col product-detail-grid">
+          <div className="card product-detail-subcard">
             <h3 className="section-title">{locale === "en" ? "Core Mechanics" : "核心机制"}</h3>
             <div className="list">
               {(content.coreMechanics ?? []).map((item) => (
-                <span key={item}>{item}</span>
+                <span key={item} className="product-list-item">
+                  {item}
+                </span>
               ))}
             </div>
           </div>
-          <div className="card">
+          <div className="card product-detail-subcard">
             <h3 className="section-title">{locale === "en" ? "Value" : "价值主张"}</h3>
             <div className="list">
               {(content.valueProposition ?? []).map((item) => (
-                <span key={item}>{item}</span>
+                <span key={item} className="product-list-item">
+                  {item}
+                </span>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="two-col">
-          <div className="card">
+        <div className="two-col product-detail-grid">
+          <div className="card product-detail-subcard">
             <h3 className="section-title">{locale === "en" ? "GEO Keywords" : "GEO 关键词"}</h3>
-            <p>{(content.geo?.keywords ?? []).join(" · ")}</p>
-            <p className="meta">{(content.geo?.searchIntents ?? []).join(" / ")}</p>
+            <p className="product-detail-keywords">{(content.geo?.keywords ?? []).join(" · ")}</p>
+            <p className="meta product-detail-intents">{(content.geo?.searchIntents ?? []).join(" / ")}</p>
           </div>
-          <div className="card">
+          <div className="card product-detail-subcard">
             <h3 className="section-title">{locale === "en" ? "Usage Context" : "使用场景"}</h3>
-            <p>{(content.geo?.usageContexts ?? []).join(" · ")}</p>
-            <p className="meta">{data.product.typeTaxonomy.join(", ")} | {data.product.platforms.join(", ")}</p>
+            <p className="product-detail-context">{(content.geo?.usageContexts ?? []).join(" · ")}</p>
+            <p className="meta product-detail-meta">
+              {data.product.typeTaxonomy.join(", ")} | {data.product.platforms.join(", ")}
+            </p>
           </div>
         </div>
       </section>
@@ -197,14 +206,12 @@ export default async function ProductPage({
         {data.media.length === 0 ? <p className="meta">{locale === "en" ? "No media" : "暂无媒体"}</p> : null}
         <div className="grid products">
           {data.media.map((asset) => (
-            <figure key={asset.id} className="card">
-              <a href={asset.url} target="_blank" rel="noreferrer">
-                {asset.url}
-              </a>
-              <figcaption className="meta">
-                {asset.type} {asset.meta?.altText ? `| ${asset.meta.altText}` : ""}
-              </figcaption>
-            </figure>
+            <MediaPreview
+              key={asset.id}
+              asset={asset}
+              locale={locale}
+              fallbackAlt={content.identity?.name ?? data.product.canonicalId}
+            />
           ))}
         </div>
       </section>

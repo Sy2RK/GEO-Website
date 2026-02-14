@@ -4,7 +4,7 @@
 
 ## 1. 适用范围
 
-- 产品类型：`game`、`ai`（可扩展标签）
+- 产品类型：`game`、`ai`、`others`（可扩展标签）
 - 语言：`zh-CN`、`en`（必须成对）
 - 展示位置：
   - 首页精选卡片（Featured）
@@ -32,7 +32,7 @@
 - `slugByLocale`：至少包含
   - `zh-CN`
   - `en`
-- `typeTaxonomy`：至少 1 个主类型（`game` 或 `ai`），其余为标签
+- `typeTaxonomy`：至少 1 个主类型（`game` / `ai` / `others`），其余为标签
 - `platforms`：从 `ios/android/web/pc/mac` 中选
 - `status`：`active` 才会进入公开列表
 
@@ -133,4 +133,3 @@
 - 单个产品：后台页面 `/admin/products/{canonicalId}?locale=zh-CN|en`
 - 批量录入：`POST /api/admin/batch/validate` -> `POST /api/admin/batch/upsert`
 - 初始化样例：`apps/api/prisma/seed.ts`
-

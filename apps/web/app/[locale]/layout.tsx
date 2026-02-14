@@ -20,9 +20,8 @@ export default async function LocaleLayout({
         <div className="site-brand-wrap">
           <Link href={`/${locale}`} className="brand brand-link">
             <img src="/images/GuruLogo.png" alt="Guru logo" className="brand-logo" />
-            <span>Guru GEO Wiki</span>
+            <span>Guru Game</span>
           </Link>
-          <span className="site-tag">{locale === "en" ? "Canonical Knowledge Graph" : "Canonical 知识图谱"}</span>
         </div>
 
         <nav className="site-nav" aria-label="Primary">

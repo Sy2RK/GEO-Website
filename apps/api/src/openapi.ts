@@ -1,7 +1,7 @@
 export const openApiDocument = {
   openapi: "3.1.0",
   info: {
-    title: "Guru GEO Wiki API",
+    title: "Guru Game API",
     version: "1.0.0"
   },
   servers: [

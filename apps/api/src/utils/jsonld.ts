@@ -21,6 +21,8 @@ export function buildProductJsonLd(params: {
   const { product, doc, canonicalUrl, locale } = params;
   const content = (doc.content ?? {}) as ProductDocContent;
   const isGame = product.typeTaxonomy.includes("game");
+  const isAi = product.typeTaxonomy.includes("ai");
+  const applicationCategory = isGame ? "Game" : isAi ? "AI Tool" : "Other";
 
   return {
     "@context": "https://schema.org",
@@ -31,7 +33,7 @@ export function buildProductJsonLd(params: {
     name: content.identity?.name ?? product.canonicalId,
     description: content.canonicalSummary ?? content.definition ?? "",
     keywords: content.geo?.keywords ?? [],
-    applicationCategory: isGame ? "Game" : "AI Tool",
+    applicationCategory,
     operatingSystem: product.platforms.join(",")
   };
 }

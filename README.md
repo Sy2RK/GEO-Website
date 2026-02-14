@@ -1,4 +1,4 @@
-# Guru GEO Wiki
+# Guru Game
 
 生产级 GEO/SEO 导向 Web 应用（Monorepo）：
 - `apps/api`: Fastify + Prisma + PostgreSQL（REST + OpenAPI + JWT/RBAC）

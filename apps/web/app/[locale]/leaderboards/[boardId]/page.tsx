@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLdScript } from "../../../../components/JsonLdScript";
+import { MediaPreview } from "../../../../components/MediaPreview";
 import { apiGet } from "../../../../lib/api";
 import { toApiLocale } from "../../../../lib/locales";
 
@@ -133,14 +134,7 @@ export default async function LeaderboardPage({
         <h2 className="section-title">{locale === "en" ? "Media" : "媒体资源"}</h2>
         <div className="grid products">
           {data.media.map((asset) => (
-            <figure key={asset.id} className="card">
-              <a href={asset.url} target="_blank" rel="noreferrer">
-                {asset.url}
-              </a>
-              <figcaption className="meta">
-                {asset.type} {asset.meta?.altText ? `| ${asset.meta.altText}` : ""}
-              </figcaption>
-            </figure>
+            <MediaPreview key={asset.id} asset={asset} locale={locale} fallbackAlt={data.doc.content.title} />
           ))}
         </div>
       </section>

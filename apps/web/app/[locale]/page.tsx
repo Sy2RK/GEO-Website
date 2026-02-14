@@ -15,7 +15,7 @@ export async function generateMetadata({
   const canonical = `${base}/${locale}`;
 
   return {
-    title: locale === "en" ? "Guru Game Wiki" : "Guru Game Wiki",
+    title: locale === "en" ? "Guru Game" : "Guru Game",
     description:
       locale === "en"
         ? "We make games seriously — and play seriously too. "
@@ -28,21 +28,21 @@ export async function generateMetadata({
       }
     },
     openGraph: {
-      title: "Guru GEO Wiki",
+      title: "Guru Game",
       description:
         locale === "en"
-          ? "Canonical GEO knowledge base and operational homepage"
-          : "GEO Canonical 知识库与运营首页",
+          ? "Official website for Guru Game products and tools"
+          : "Guru Game 产品与工具官网",
       type: "website",
       url: canonical
     },
     twitter: {
       card: "summary_large_image",
-      title: "Guru GEO Wiki",
+      title: "Guru Game",
       description:
         locale === "en"
-          ? "Canonical GEO knowledge base and operational homepage"
-          : "GEO Canonical 知识库与运营首页"
+          ? "Official website for Guru Game products and tools"
+          : "Guru Game 产品与工具官网"
     }
   };
 }
@@ -164,11 +164,11 @@ export default async function LocaleHomePage({
     "@id": `${process.env.WEB_BASE_URL ?? "http://localhost:3000"}/${locale}`,
     url: `${process.env.WEB_BASE_URL ?? "http://localhost:3000"}/${locale}`,
     inLanguage: apiLocale,
-    name: locale === "en" ? "Guru GEO Wiki Homepage" : "Guru GEO Wiki 首页",
+    name: locale === "en" ? "Guru Game Homepage" : "Guru Game 首页",
     description:
       locale === "en"
-        ? "Featured products, leaderboards, and collections with canonical GEO summaries"
-        : "展示精选、榜单和专题，提供可运营的 GEO canonical 内容"
+        ? "Official homepage featuring products, leaderboards, and collections"
+        : "Guru Game 官方首页，展示产品、榜单与专题内容"
   };
 
   const featuredByCanonicalId = new Map(
@@ -189,16 +189,27 @@ export default async function LocaleHomePage({
     data.leaderboards.find((entry) => entry.board.boardId === "ai_top") ??
     data.leaderboards.find((entry) => entry.board.boardId !== gameLeaderboard?.board.boardId) ??
     null;
+  const castboxTargetSlug =
+    productList.items.find(
+      (item) =>
+        item.slug.toLowerCase().includes("castbox") ||
+        item.name.toLowerCase().includes("castbox") ||
+        item.canonicalId.toLowerCase().includes("castbox")
+    )?.slug ??
+    data.featured.find(
+      (item) => item.card.slug.toLowerCase().includes("castbox") || item.card.name.toLowerCase().includes("castbox")
+    )?.card.slug ??
+    null;
 
   return (
     <main className="grid home-grid">
       <JsonLdScript jsonld={jsonld} />
 
-      <section className="hero card hero-with-bg">
+      <section className="hero card hero-with-bg hero-castbox">
         <div className="hero-bg hero-bg-castbox" aria-hidden="true" />
         <div className="hero-content">
           <div className="hero-topline">
-            <span className="badge badge-cool">{locale === "en" ? "TOP Podcast" : "热门播客推荐"}</span>
+            <span className="badge badge-cool">{locale === "en" ? "TOP Tools" : "热门工具推荐"}</span>
             <span className="hero-test-tags">
               {locale === "en" ? "Audio, Story, Chill, Focus" : "音频 · 叙事 · 放松 · 专注"}
             </span>
@@ -211,6 +222,16 @@ export default async function LocaleHomePage({
               ? "Discover podcasts, stories, and daily listening content with a lightweight and personalized experience."
               : "探索播客、故事和每日音频内容，以轻量和个性化的方式获得持续收听体验。"}
           </p>
+          {castboxTargetSlug ? (
+            <div className="hero-actions hero-actions-bottom-right">
+              <Link href={`/${locale}/products/${castboxTargetSlug}`} className="button primary hero-cta-button">
+                <span>{locale === "en" ? "View Now" : "立即查看"}</span>
+                <span className="hero-cta-arrow" aria-hidden="true">
+                  -&gt;
+                </span>
+              </Link>
+            </div>
+          ) : null}
         </div>
       </section>
 
